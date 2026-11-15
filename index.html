@@ -1,0 +1,67 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sidra Perfume</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#FBF7EE;--card:#fff;--ink:#2b2418;--gold:#B08D3C;--line:#E7DDC6;--bad:#B42318}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1912;--card:#26221a;--ink:#f2ead7;--line:#3b3526}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Tahoma,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--gold);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+nav{display:flex;gap:6px;padding:10px;overflow-x:auto}nav button,.b{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
+nav .on,.b.p{background:var(--gold);color:#fff;border-color:var(--gold)}main{padding:10px 14px;max-width:720px;margin:auto}
+.c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
+input,select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);color:var(--ink);margin:4px 0}
+.r{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.m{color:var(--gold);font-weight:700}.bad{color:var(--bad)}small{opacity:.7}
+#rc{display:none}@media print{body>*:not(#rc){display:none!important}#rc{display:block!important;width:72mm;font-size:12px;color:#000;background:#fff}#rc .rl{display:flex;justify-content:space-between}#rc .c{text-align:center}#rc h2{text-align:center;margin:4px 0}}
+</style></head><body>
+<header><b>🌳 Sidra Perfume</b><button class="b" id="out" hidden>خروج</button></header>
+<nav id="nv" hidden></nav><main id="app"></main><div id="rc"></div>
+<script>
+const SB_URL='PASTE_PROJECT_URL',SB_KEY='PASTE_PUBLISHABLE_KEY';
+const sb=supabase.createClient(SB_URL,SB_KEY),$=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fm=n=>Math.round(+n*100)/100,V=id=>($('#'+id)||{}).value||'';
+const S={tab:'pos',cart:[],perf:[],sizes:[],orders:[],msg:'',ok:0,user:null,owner:false};
+const TABS=[['pos','🧾 مبيعات'],['items','🧴 العطور والأحجام'],['orders','🛍️ طلبات المتجر'],['stock','📦 مخزون ومشتريات']];
+const zf=id=>S.sizes.find(x=>x.id==id),pf=id=>S.perf.find(x=>x.id==id);
+async function load(){const [p,z,o]=await Promise.all([sb.from('sp_perfumes').select('*').order('name'),sb.from('sp_sizes').select('*').order('ml'),sb.from('sp_orders').select('*,sp_order_items(size_id,qty,price)').order('created_at',{ascending:false}).limit(50)]);S.perf=p.data||[];S.sizes=z.data||[];S.orders=o.error?[]:o.data||[]}
+async function boot(){const {data}=await sb.auth.getSession();S.user=data.session&&data.session.user;
+ if(S.user){const o=await sb.from('sp_owner').select('user_id').maybeSingle();S.owner=!!o.data;if(S.owner)await load()}draw()}
+function draw(){const nv=$('#nv'),a=$('#app');$('#out').hidden=!S.user;nv.hidden=!S.owner;
+ if(!S.user){a.innerHTML=`<div class=c><h3>تسجيل الدخول</h3><input id=em type=email placeholder="الإيميل"><input id=pw type=password placeholder="الباسورد"><button class="b p" data-a=login>دخول</button><p class=bad>${esc(S.msg)}</p></div>`;return}
+ if(!S.owner){a.innerHTML='<div class=c>الحساب ده مش مسجّل كمالك. شغّل سطر sp_owner في SQL.</div>';return}
+ nv.innerHTML=TABS.map(t=>`<button class="${S.tab===t[0]?'on':''}" data-a="t:${t[0]}">${t[1]}</button>`).join('');
+ a.innerHTML=(S.tab==='pos'?pos():S.tab==='items'?items():S.tab==='orders'?orders():stock())+(S.msg?`<p class="${S.ok?'m':'bad'}">${esc(S.msg)}</p>`:'')}
+const tot=()=>S.cart.reduce((s,c)=>s+zf(c.id).price*c.qty,0);
+function pos(){const rows=S.cart.map((c,i)=>{const z=zf(c.id),p=pf(z.perfume_id);return `<div class=r><span>${esc(p.name)} ${z.ml}مل</span><span><button class=b data-a="q:${i}:-1">−</button> ${c.qty} <button class=b data-a="q:${i}:1">+</button></span><b>${fm(z.price*c.qty)}</b></div>`}).join('');
+ return `<div class=c><input id=bc placeholder="امسح الباركود واضغط Enter" autofocus><select id=sz><option value="">أو اختار عطر وحجم</option>${S.sizes.filter(z=>z.active&&pf(z.perfume_id)).map(z=>`<option value=${z.id}>${esc(pf(z.perfume_id).name)} · ${z.ml}مل · ${z.price}</option>`).join('')}</select><button class=b data-a=addsz>إضافة</button></div>
+ <div class=c>${rows||'<small>الفاتورة فاضية</small>'}<div class=r><b>الإجمالي</b><b class=m>${fm(tot())}</b></div></div>
+ <div class=c><select id=kind><option value=sale>بيع</option><option value=gift>هدية (من غير إيراد)</option><option value=return>مرتجع</option></select><div class=g2><input id=cn placeholder="اسم العميل (اختياري)"><input id=cp placeholder="تليفون العميل" inputmode=tel></div><button class="b p" data-a=sell>إتمام وطباعة الإيصال</button></div>`}
+const ST={new:'جديد',ready:'اتجهز',delivered:'اتسلّم',cancelled:'اتلغى'};
+function orders(){return S.orders.map(o=>`<div class=c><div class=r><b>#${o.id} · ${esc(o.name)}</b><span class=m>${ST[o.status]}</span></div><small>${esc(o.phone)} · ${esc(o.address||'')}${o.note?' · '+esc(o.note):''}</small>${(o.sp_order_items||[]).map(i=>{const z=zf(i.size_id),p=z&&pf(z.perfume_id);return `<div class=r><span>${p?esc(p.name):'?'} ${z?z.ml:''}مل ×${i.qty}</span><span>${fm(i.price*i.qty)}</span></div>`}).join('')}<div class=r><b>الإجمالي</b><b>${fm(o.total)}</b></div>${o.status==='new'?`<button class=b data-a="os:${o.id}:ready">اتجهز</button> `:''}${o.status==='new'||o.status==='ready'?`<button class="b p" data-a="odel:${o.id}">تم التسليم (يتحوّل لفاتورة)</button> <button class=b data-a="os:${o.id}:cancelled">إلغاء</button>`:''}</div>`).join('')||'<div class=c><small>مفيش طلبات لسه.</small></div>'}
+function items(){return `<div class=c><b>عطر جديد</b><input id=pn placeholder="اسم العطر"><div class=g2><select id=pc><option>رجالي</option><option>حريمي</option><option>يونيسكس</option></select><input id=pt placeholder="ملاحظات الرائحة"></div><button class="b p" data-a=addp>حفظ العطر</button></div>
+ <div class=c><b>حجم زجاجة جديد</b><select id=sp>${S.perf.map(p=>`<option value=${p.id}>${esc(p.name)}</option>`).join('')}</select><div class=g2><input id=sm type=number placeholder="الحجم بالمل"><input id=spr type=number placeholder="السعر"></div><input id=sb placeholder="الباركود (اختياري، امسحه هنا)"><button class="b p" data-a=adds>حفظ الحجم</button></div>
+ ${S.perf.map(p=>`<div class=c><b>${esc(p.name)}</b> <small>${esc(p.category||'')} ${esc(p.notes||'')}</small>${S.sizes.filter(z=>z.perfume_id==p.id).map(z=>`<div class=r><span>${z.ml} مل</span><span>${z.price} جنيه</span><small>${esc(z.barcode||'بدون باركود')}</small></div>`).join('')}</div>`).join('')}`}
+function stock(){return `<div class=c><b>شراء عطر (فرط)</b><select id=bp>${S.perf.map(p=>`<option value=${p.id}>${esc(p.name)}</option>`).join('')}</select><div class=g2><input id=bq type=number placeholder="الكمية"><select id=bu><option value=1>مل</option><option value=1000>لتر</option></select></div><div class=g2><input id=bt type=number placeholder="إجمالي التكلفة"><input id=bs placeholder="المورد"></div><button class="b p" data-a=buy>تسجيل الشراء</button></div>
+ <div class=c><b>المخزون</b>${S.perf.map(p=>`<div class=r><span>${esc(p.name)}</span><span class="${p.bulk_ml<500?'bad':''}">${fm(p.bulk_ml)} مل</span><small>تكلفة المل ${fm(p.cost_per_ml)}</small></div>`).join('')||'<small>ضيف عطور الأول</small>'}</div>`}
+function receipt(id,kind,name,phone){const g=kind==='gift',L=S.cart.map(c=>{const z=zf(c.id),p=pf(z.perfume_id);return `<div class=rl><span>${esc(p.name)} ${z.ml}مل ×${c.qty}</span><span>${g?0:fm(z.price*c.qty)}</span></div>`}).join('');
+ $('#rc').innerHTML=`<h2>Sidra Perfume</h2><div class=c>${kind==='return'?'مرتجع':g?'هدية':'فاتورة'} #${id}<br>${new Date().toLocaleString('ar-EG')}</div>${name||phone?`<div>${esc(name)} ${esc(phone)}</div>`:''}<hr>${L}<hr><div class=rl><b>الإجمالي</b><b>${g?0:fm(tot())}</b></div><div class=c>شكرًا لزيارتكم</div>`;setTimeout(()=>window.print(),150)}
+const say=(m,ok)=>{S.msg=m;S.ok=!!ok;draw()};
+function add(id){const c=S.cart.find(x=>x.id==id);c?c.qty++:S.cart.push({id:+id,qty:1})}
+async function act(k,v,w){
+ if(k==='login'){const r=await sb.auth.signInWithPassword({email:V('em'),password:V('pw')});if(r.error){S.msg='بيانات غلط';return draw()}S.msg='';return boot()}
+ if(k==='t'){S.tab=v;S.msg='';return draw()}
+ if(k==='q'){const c=S.cart[+v];c.qty+=+w;if(c.qty<1)S.cart.splice(+v,1);return draw()}
+ if(k==='addsz'){if(V('sz'))add(V('sz'));return draw()}
+ if(k==='sell'){if(!S.cart.length)return;const kind=V('kind'),n=V('cn'),p=V('cp');
+  const r=await sb.rpc('sp_sell',{p_kind:kind,p_name:n,p_phone:p,p_items:S.cart.map(c=>({size_id:c.id,qty:c.qty}))});
+  if(r.error)return say(r.error.message);receipt(r.data,kind,n,p);S.cart=[];await load();return say('✓ فاتورة '+r.data,1)}
+ if(k==='os'){const r=await sb.from('sp_orders').update({status:w}).eq('id',+v);if(r.error)return say(r.error.message);await load();return say('✓ اتحدّث',1)}
+ if(k==='odel'){const o=S.orders.find(x=>x.id==v);if(!o||!confirm('تأكيد التسليم؟ هيتخصم المخزون وتتعمل فاتورة.'))return;const r=await sb.rpc('sp_sell',{p_kind:'sale',p_name:o.name,p_phone:o.phone,p_items:o.sp_order_items.map(i=>({size_id:i.size_id,qty:i.qty}))});if(r.error)return say(r.error.message);await sb.from('sp_orders').update({status:'delivered'}).eq('id',o.id);await load();return say('✓ فاتورة '+r.data,1)}
+ if(k==='addp'){if(!V('pn').trim())return;const r=await sb.from('sp_perfumes').insert({name:V('pn').trim(),category:V('pc'),notes:V('pt')||null});if(r.error)return say(r.error.message);await load();return say('✓ اتحفظ',1)}
+ if(k==='adds'){if(!V('sp')||!V('sm')||V('spr')==='')return say('كمّل الحجم والسعر');const r=await sb.from('sp_sizes').insert({perfume_id:+V('sp'),ml:+V('sm'),price:+V('spr'),barcode:V('sb').trim()||null});if(r.error)return say(r.error.message);await load();return say('✓ اتحفظ',1)}
+ if(k==='buy'){const ml=+V('bq')*+V('bu');if(!V('bp')||!(ml>0)||V('bt')==='')return say('كمّل الكمية والتكلفة');const r=await sb.from('sp_purchases').insert({perfume_id:+V('bp'),ml,cost_total:+V('bt'),supplier:V('bs')||null});if(r.error)return say(r.error.message);await load();return say('✓ اتسجّل الشراء',1)}}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b){const [k,v,w]=b.dataset.a.split(':');act(k,v,w)}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='bc'){e.preventDefault();const code=e.target.value.trim(),z=S.sizes.find(x=>x.barcode===code);if(z)add(z.id);S.msg=z?'':'باركود غير معروف';draw();const i=$('#bc');i&&i.focus()}});
+$('#out').onclick=async()=>{await sb.auth.signOut();S.user=null;S.owner=false;draw()};
+boot();
+</script></body></html>
